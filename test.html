@@ -95,6 +95,48 @@ ok('le figure valgono 10',
   ok('somma denari = 10', p[0].denari + p[1].denari === 10);
 }
 
+/* ---- punteggio a 41 ---- */
+{
+  const st = nuovaMano(9, 3);
+  st.prese[0] = [];
+  st.prese[1] = [];
+  /* NOI: tutti i denari (settebello compreso) e nient'altro.
+     LORO: tutte le altre 30 carte. */
+  for (let c = 0; c < 40; c++) (seme(c) === 0 ? st.prese[0] : st.prese[1]).push(c);
+
+  /* NOI prende 10 punti dai denari, il settebello e la maggioranza dei denari.
+     La primiera va invece a LORO: chi ha un solo seme somma un solo valore,
+     mentre l'altra squadra ha i sette di coppe, spade e bastoni. */
+  const q = punteggioMano(st, 'quarantuno');
+  ok('a 41: dieci denari + settebello + più denari = 12 (' + q[0].punti + ')',
+     q[0].punti === 12);
+  ok('a 41: a LORO restano carte e primiera (' + q[1].punti + ')', q[1].punti === 2);
+
+  const cl = punteggioMano(st, 'classico');
+  ok('classico: gli stessi denari valgono solo 2 punti (' + cl[0].punti + ')',
+     cl[0].punti === 2);
+  ok('i denari a 41 valgono dieci punti in più che nel classico',
+     q[0].punti - cl[0].punti === 10);
+
+  /* somma fissa per mano: 10 denari + settebello + denari + carte + primiera = 14 */
+  let peggio = 0;
+  for (let k = 0; k < 60; k++) {
+    const s2 = nuovaMano(k * 3571 + 17, k % 4);
+    while (!s2.finita) {
+      const m = mosseLegali(s2, s2.turno);
+      const x = m[Math.floor(Math.random() * m.length)];
+      gioca(s2, x.carta, x.presa);
+    }
+    const p = punteggioMano(s2, 'quarantuno');
+    const scope = p[0].scope + p[1].scope;
+    const pari = (p[0].carte === p[1].carte ? 1 : 0) +
+                 (p[0].denari === p[1].denari ? 1 : 0) +
+                 (p[0].primiera.totale === p[1].primiera.totale ? 1 : 0);
+    if (p[0].punti + p[1].punti !== 14 + scope - pari) peggio++;
+  }
+  ok('a 41: ogni mano distribuisce 14 punti piu\' le scope, meno le parita\'', peggio === 0);
+}
+
 /* ---- invarianti su 300 mani casuali ---- */
 {
   let guasti = 0;

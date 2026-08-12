@@ -26,8 +26,28 @@ Il giro è antiorario: Sud → Est → Nord → Ovest.
 Regole applicate: mazzo di 40 carte distribuito tutto, tavolo inizialmente
 vuoto, presa obbligatoria della singola quando c'è (le somme valgono solo
 se sul tavolo non c'è una carta di pari valore), niente scopa sull'ultima
-presa, le carte rimaste vanno a chi ha preso per ultimo. Punti: carte,
-denari, settebello, primiera e una scopa ciascuna.
+presa, le carte rimaste vanno a chi ha preso per ultimo.
+
+### Punteggio
+
+Predefinito **a 41**:
+
+| voce | punti |
+| --- | --- |
+| ogni denaro preso | 1 ciascuno (10 in palio) |
+| settebello | 1 in più, oltre al suo punto da denaro |
+| più carte | 1 |
+| più denari | 1 |
+| primiera | 1 |
+| ogni scopa | 1 |
+
+Fanno 14 punti fissi a mano più le scope, quindi la partita dura tre o
+quattro mani. Con questo conteggio i denari pesano dieci volte più che nel
+gioco classico: la mano si decide su quelli, non sulle carte.
+
+Resta disponibile il **classico** (carte, denari, settebello, primiera e le
+scope, partita a 11, 16 o 21). Cambiare sistema azzera la partita in corso,
+perché i punti delle due scale non sono confrontabili.
 
 **Non c'è nessun contatore delle carte uscite.** È voluto: il pannello
 mostra solo carte prese e scope, mentre denari, settebello e primiera

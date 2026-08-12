@@ -230,6 +230,20 @@ function clona(st) {
 
 /* ---------- punteggio ---------- */
 
+/* Due sistemi.
+ *   classico   — carte, denari, settebello, primiera, piu' le scope.
+ *   quarantuno — ogni denaro preso vale un punto, il settebello ne vale uno
+ *                in piu', e restano i classici carte, denari e primiera.
+ *                Fanno 14 punti fissi a mano piu' le scope: si va a 41.
+ */
+const SISTEMI = {
+  quarantuno: { obiettivi: [41, 61] },
+  classico:   { obiettivi: [11, 16, 21] }
+};
+
+let SISTEMA = 'quarantuno';
+function impostaSistema(s) { if (SISTEMI[s]) SISTEMA = s; }
+
 function primieraDi(carte) {
   const best = [0, 0, 0, 0];
   for (const c of carte) {
@@ -239,7 +253,9 @@ function primieraDi(carte) {
   return { totale: best[0] + best[1] + best[2] + best[3], perSeme: best };
 }
 
-function punteggioMano(st) {
+function punteggioMano(st, sistema) {
+  const sis = SISTEMI[sistema] ? sistema : SISTEMA;
+
   const sq = [0, 1].map(s => {
     const cs = st.prese[s];
     return {
@@ -259,8 +275,18 @@ function punteggioMano(st) {
     sq[vincitore].voci.push(nome);
   };
 
+  /* a 41 ogni denaro preso e' gia' un punto per conto suo */
+  if (sis === 'quarantuno') {
+    for (const s of [0, 1]) {
+      if (!sq[s].denari) continue;
+      sq[s].punti += sq[s].denari;
+      sq[s].voci.push(sq[s].denari + (sq[s].denari === 1 ? ' denaro' : ' denari'));
+    }
+  }
+
   assegna(sq[0].carte > sq[1].carte ? 0 : sq[1].carte > sq[0].carte ? 1 : -1, 'carte');
-  assegna(sq[0].denari > sq[1].denari ? 0 : sq[1].denari > sq[0].denari ? 1 : -1, 'denari');
+  assegna(sq[0].denari > sq[1].denari ? 0 : sq[1].denari > sq[0].denari ? 1 : -1,
+          'più denari');
   assegna(sq[0].settebello ? 0 : sq[1].settebello ? 1 : -1, 'settebello');
   const p0 = sq[0].primiera.totale, p1 = sq[1].primiera.totale;
   assegna(p0 > p1 ? 0 : p1 > p0 ? 1 : -1, 'primiera');

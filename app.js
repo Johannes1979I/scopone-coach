@@ -11,7 +11,8 @@ const APP = {
   punti: [0, 0],
   mano: 0,
   mazziere: 3,
-  opz: { livello: 'campione', ritardo: 900, obiettivo: 11, checkpoint: true },
+  opz: { livello: 'campione', ritardo: 900, sistema: 'quarantuno', obiettivo: 41,
+         checkpoint: true },
   sbirciate: 0,
   memoria: [],
   checkFatto: false,
@@ -32,6 +33,8 @@ function caricaStat() {
     const o = JSON.parse(localStorage.getItem('scopone.opz') || 'null');
     if (o) Object.assign(APP.opz, o);
   } catch (e) { /* localStorage non disponibile */ }
+  if (!SISTEMI[APP.opz.sistema]) APP.opz.sistema = 'quarantuno';
+  impostaSistema(APP.opz.sistema);
 }
 function salvaStat() {
   try {
@@ -339,6 +342,10 @@ function costruisciLog(st, p) {
     data: new Date().toISOString(),
     mano: APP.mano,
     seed: st.seed,
+    sistema_punteggio: APP.opz.sistema === 'quarantuno'
+      ? 'a 41: ogni denaro 1 punto, settebello 1 in più, poi carte, più denari e primiera, più le scope'
+      : 'classico: carte, denari, settebello, primiera, più le scope',
+    obiettivo: APP.opz.obiettivo,
     livello_avversari: APP.opz.livello,
     mazziere: NOMI[st.mazziere],
     primo_di_mano: NOMI[st.primo],
@@ -394,6 +401,7 @@ async function salvaLog(dati) {
 function testoAnalisi(d) {
   const r = [];
   r.push('SCOPONE SCIENTIFICO — mano ' + d.mano + ' (avversari: ' + d.livello_avversari + ')');
+  r.push('Punteggio ' + d.sistema_punteggio + '. Partita a ' + d.obiettivo + '.');
   r.push('Mazziere: ' + d.mazziere + '. Primo di mano: ' + d.primo_di_mano + '.');
   r.push('NOI = Sud (io) + Nord.  LORO = Est + Ovest.');
   r.push('');
@@ -411,6 +419,10 @@ function testoAnalisi(d) {
     r.push('  ' + s.padEnd(5) + 'carte ' + p.carte + ', denari ' + p.denari +
            ', settebello ' + (p.settebello ? 'sì' : 'no') + ', primiera ' + p.primiera +
            ', scope ' + p.scope + '  →  ' + p.punti + ' punti');
+  }
+  for (const s of ['NOI', 'LORO']) {
+    const p = d.punteggio_mano[s];
+    r.push('    (' + s.toLowerCase() + ': ' + (p.voci.length ? p.voci.join(', ') : 'niente') + ')');
   }
   r.push('  Partita: NOI ' + d.punti_partita.NOI + ' – LORO ' + d.punti_partita.LORO);
   if (d.controllo_memoria.length) {
@@ -493,17 +505,26 @@ async function fineMano() {
   render();
 
   const vinc = (a, b) => a > b ? 0 : b > a ? 1 : -1;
+  const a41 = APP.opz.sistema === 'quarantuno';
+
   let tab = '<table class="punti"><tr><th></th><th>Noi</th><th>Loro</th></tr>';
   tab += rigaPunti('Carte', p[0].carte, p[1].carte, vinc(p[0].carte, p[1].carte));
-  tab += rigaPunti('Denari', p[0].denari, p[1].denari, vinc(p[0].denari, p[1].denari));
+  tab += rigaPunti(a41 ? 'Denari (1 punto ciascuno)' : 'Denari',
+    p[0].denari, p[1].denari, vinc(p[0].denari, p[1].denari));
   tab += rigaPunti('Settebello', p[0].settebello ? '✓' : '—', p[1].settebello ? '✓' : '—',
     p[0].settebello ? 0 : 1);
   tab += rigaPunti('Primiera', p[0].primiera.totale, p[1].primiera.totale,
     vinc(p[0].primiera.totale, p[1].primiera.totale));
   tab += rigaPunti('Scope', p[0].scope, p[1].scope, vinc(p[0].scope, p[1].scope));
   tab += '<tr class="totale"><th>Punti della mano</th><td>' + p[0].punti + '</td><td>' + p[1].punti + '</td></tr>';
-  tab += '<tr class="totale"><th>Partita</th><td>' + APP.punti[0] + '</td><td>' + APP.punti[1] + '</td></tr>';
+  tab += '<tr class="totale"><th>Partita (a ' + APP.opz.obiettivo + ')</th><td>' +
+    APP.punti[0] + '</td><td>' + APP.punti[1] + '</td></tr>';
   tab += '</table>';
+
+  tab += '<p class="nota">' +
+    ['Noi', 'Loro'].map((n, i) => '<b>' + n + ' ' + p[i].punti + '</b>: ' +
+      (p[i].voci.length ? p[i].voci.join(', ') : 'niente')).join(' &nbsp;·&nbsp; ') +
+    '</p>';
 
   let mem = '';
   if (APP.memoria.length) {
@@ -690,7 +711,36 @@ function collega() {
   };
   bind('#optLivello', 'livello', false);
   bind('#optRitardo', 'ritardo', true);
+
+  /* i traguardi possibili dipendono dal sistema di punteggio */
+  const aggiornaObiettivi = () => {
+    const sel = $('#optObiettivo');
+    const lista = SISTEMI[APP.opz.sistema].obiettivi;
+    sel.innerHTML = lista.map(v => '<option value="' + v + '">' + v + ' punti</option>').join('');
+    if (lista.indexOf(APP.opz.obiettivo) < 0) APP.opz.obiettivo = lista[0];
+    sel.value = APP.opz.obiettivo;
+  };
+
+  const selSis = $('#optSistema');
+  if (!SISTEMI[APP.opz.sistema]) APP.opz.sistema = 'quarantuno';
+  selSis.value = APP.opz.sistema;
+  aggiornaObiettivi();
   bind('#optObiettivo', 'obiettivo', true);
+
+  selSis.onchange = () => {
+    const nuovo = selSis.value;
+    const iniziata = APP.punti[0] || APP.punti[1] || APP.mano > 1;
+    if (iniziata && !confirm('Cambiare il punteggio azzera la partita in corso. Procedo?')) {
+      selSis.value = APP.opz.sistema;
+      return;
+    }
+    APP.opz.sistema = nuovo;
+    impostaSistema(nuovo);
+    aggiornaObiettivi();
+    salvaStat();
+    APP.risolviMossa = null;
+    nuovaPartita();
+  };
 
   const chk = $('#optCheckpoint');
   chk.checked = APP.opz.checkpoint;
