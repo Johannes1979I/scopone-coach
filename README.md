@@ -78,12 +78,37 @@ prendere, perché la presa è obbligatoria), e valuta ogni mossa candidata su
 tutti i campioni. Nelle ultime prese la posizione viene risolta in modo
 esatto con alfa-beta.
 
+Alla fine c'è uno **spareggio sul tavolo che si lascia scoperto**: fra le
+mosse che la ricerca giudica equivalenti si sceglie quella che espone meno
+alla scopa. Sembra un dettaglio ed è invece la correzione che ha pesato di
+più — vedi sotto.
+
 I bot vedono solo ciò che vedrebbe un giocatore umano: `test.html` contiene
 una verifica apposta che la scelta non cambi se si rimescolano le carte che
 il bot non può vedere.
 
 Livelli: *principiante* (guarda solo la presa immediata, regala scope),
 *intermedio* (ragiona ma sbaglia il 18% delle scelte), *campione*.
+
+### Cosa è stato provato, e cosa ha funzionato
+
+`bench.html` fa giocare due configurazioni una contro l'altra sulle stesse
+mani nei due sensi, e misura punti, denari e scope. Serve perché su questo
+motore l'intuito sbaglia quasi sempre. Risultati misurati:
+
+| modifica | esito |
+| --- | --- |
+| simulazioni interne che guardano la risposta avversaria | **peggio**: costa 4,8× e a parità di tempo perde 155-173 |
+| pesi dell'euristica ritarati sul punteggio a 41 | **peggio**: 304-343 su 40 mani |
+| 2,5× i campioni e finale esatto più profondo | **inutile**: 150-151, la ricerca è satura |
+| penalità sul punteggio proporzionale al rischio di scopa | **peggio**: 208-221, e 22 denari persi |
+| spareggio a parità di valore sul rischio di scopa | **meglio**: 212-203, e scope regalate da 5,2 a 1,8 per mano |
+
+Il difetto vero non era la profondità della ricerca ma il fatto che il
+rischio di scopa, pur essendo calcolato, non entrava nella decisione finale:
+finiva diluito nella media sui campioni. Prima della correzione il motore
+lasciava la scopa all'avversario 5,2 volte a mano, e in 29 casi su 31 aveva
+sottomano un'alternativa che non gliela lasciava.
 
 ## File
 

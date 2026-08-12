@@ -181,6 +181,37 @@ ok('le figure valgono 10',
      m1.carta === m2.carta);
 }
 
+/* ---- scope regalate per niente ---- */
+{
+  /* Conta le volte in cui una mossa lascia la scopa all'avversario pur
+     esistendo un'alternativa che non gliela lascia. Era il difetto piu'
+     vistoso del motore: 5,2 volte a mano. */
+  const sprecate = (livello) => {
+    impostaSistema('quarantuno');
+    let concesse = 0;
+    for (let k = 0; k < 5; k++) {
+      const st = nuovaMano(k * 4111 + 61, k % 4);
+      while (!st.finita) {
+        const g = st.turno;
+        const scelta = scegliMossa(st, g, livello);
+        const scopre = (m) => {
+          const s2 = clona(st);
+          giocaVeloce(s2, m.carta, m.presa);
+          return !s2.finita && puoScopare(s2.tavolo, s2.mani[s2.turno]);
+        };
+        if (scopre(scelta) && mosseLegali(st, g).some(m => !scopre(m))) concesse++;
+        gioca(st, scelta.carta, scelta.presa);
+      }
+    }
+    return concesse / 5;
+  };
+  const camp = sprecate('campione');
+  const prin = sprecate('principiante');
+  ok('il campione regala meno di 3 scope a mano (' + camp.toFixed(1) + ')', camp < 3);
+  ok('il principiante ne regala di piu\' (' + prin.toFixed(1) + ' contro ' + camp.toFixed(1) + ')',
+     prin > camp);
+}
+
 /* ---- forza dei livelli ---- */
 function match(livA, livB, n, off) {
   let a = 0, b = 0;

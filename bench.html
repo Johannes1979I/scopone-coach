@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scopone Coach — banco di prova del motore</title>
+<style>
+  body { font: 13px/1.6 ui-monospace, Menlo, monospace; background: #10251d; color: #e9f0ec; padding: 20px; }
+  h1 { font-size: 15px; letter-spacing: 1px; }
+  table { border-collapse: collapse; margin-top: 12px; }
+  td, th { padding: 4px 12px; text-align: right; border-bottom: 1px solid #2c5445; }
+  th:first-child, td:first-child { text-align: left; }
+  .meglio { color: #7fd6a0; font-weight: 700; }
+  .peggio { color: #e8836f; }
+</style>
+</head>
+<body>
+<h1>Banco di prova — si guida dalla console</h1>
+<p>bench(cfgA, cfgB, mani, offset) &nbsp;·&nbsp; sfida(cfgA, cfgB, mani) esegue i due lati e somma.</p>
+<div id="out"></div>
+
+<script src="rules.js"></script>
+<script src="ai.js"></script>
+<script>
+/* Fa giocare due configurazioni una contro l'altra e misura non solo i punti
+ * ma anche le scope concesse, che e' il difetto da correggere. */
+
+function bench(cfgA, cfgB, mani, offset) {
+  impostaSistema('quarantuno');
+  const r = { puntiA: 0, puntiB: 0, scopeA: 0, scopeB: 0, denariA: 0, denariB: 0,
+              maniA: 0, maniB: 0, ms: 0 };
+  const t0 = performance.now();
+  for (let k = 0; k < mani; k++) {
+    const st = nuovaMano((k + (offset || 0)) * 7919 + 13, k % 4);
+    while (!st.finita) {
+      const m = scegliMossa(st, st.turno, (st.turno & 1) === 0 ? cfgA : cfgB);
+      gioca(st, m.carta, m.presa);
+    }
+    const p = punteggioMano(st);
+    r.puntiA += p[0].punti; r.puntiB += p[1].punti;
+    r.scopeA += p[0].scope; r.scopeB += p[1].scope;
+    r.denariA += p[0].denari; r.denariB += p[1].denari;
+    if (p[0].punti > p[1].punti) r.maniA++; else if (p[1].punti > p[0].punti) r.maniB++;
+  }
+  r.ms = Math.round(performance.now() - t0);
+  return r;
+}
+
+/* Stessa serie di mani giocata nei due sensi: toglie di mezzo il vantaggio
+ * di posizione, che a scopone non e' trascurabile. */
+function sfida(cfgA, cfgB, mani, offset) {
+  const dritto = bench(cfgA, cfgB, mani, offset);
+  const rovescio = bench(cfgB, cfgA, mani, offset);
+  return {
+    puntiA: dritto.puntiA + rovescio.puntiB,
+    puntiB: dritto.puntiB + rovescio.puntiA,
+    /* scope prese da A e da B: meno ne prende B, meno ne concede A */
+    scopeA: dritto.scopeA + rovescio.scopeB,
+    scopeB: dritto.scopeB + rovescio.scopeA,
+    denariA: dritto.denariA + rovescio.denariB,
+    denariB: dritto.denariB + rovescio.denariA,
+    maniA: dritto.maniA + rovescio.maniB,
+    maniB: dritto.maniB + rovescio.maniA,
+    mani: mani * 2,
+    ms: dritto.ms + rovescio.ms
+  };
+}
+
+function mostra(nome, r) {
+  const box = document.getElementById('out');
+  const t = document.createElement('table');
+  const riga = (et, a, b, piuMeglio) => {
+    const ca = (piuMeglio ? a > b : a < b) ? 'meglio' : (a === b ? '' : 'peggio');
+    const cb = (piuMeglio ? b > a : b < a) ? 'meglio' : (a === b ? '' : 'peggio');
+    return '<tr><th>' + et + '</th><td class="' + ca + '">' + a +
+           '</td><td class="' + cb + '">' + b + '</td></tr>';
+  };
+  t.innerHTML = '<tr><th>' + nome + ' (' + r.mani + ' mani, ' + Math.round(r.ms / 1000) + 's)</th>' +
+    '<th>A</th><th>B</th></tr>' +
+    riga('punti', r.puntiA, r.puntiB, true) +
+    riga('mani vinte', r.maniA, r.maniB, true) +
+    riga('denari', r.denariA, r.denariB, true) +
+    riga('scope fatte', r.scopeA, r.scopeB, true);
+  box.appendChild(t);
+  return r;
+}
+</script>
+</body>
+</html>
