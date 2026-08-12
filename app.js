@@ -138,6 +138,8 @@ function render() {
   $('#iTurno').textContent = st.finita ? '—' : NOMI[st.turno];
   $('#bCarte').textContent = st.prese[0].length + ' / ' + st.prese[1].length;
   $('#bScope').textContent = st.scope[0] + ' / ' + st.scope[1];
+  $('#mazzoNoi').querySelector('.n').textContent = st.prese[0].length;
+  $('#mazzoLoro').querySelector('.n').textContent = st.prese[1].length;
   $('#mAcc').textContent = APP.stat.tot
     ? Math.round(100 * APP.stat.ok / APP.stat.tot) + '%'
     : '—';
@@ -148,7 +150,10 @@ function render() {
   $('#aCount').textContent = leggiArchivio().length;
 }
 
-function messaggio(t) { $('#messaggio').textContent = t || ''; }
+function messaggio(t) { $('#messaggio').innerHTML = t || ''; }
+
+const nomeSq = s => (s === 0 ? 'Noi' : 'Loro');
+const elenco = cs => cs.map(c => '<b>' + nomeCartaEsteso(c) + '</b>').join(' e ');
 
 /* ---------- animazione della giocata ----------
  * Ogni mossa si legge in tre tempi: la carta arriva sul tavolo (girandosi
@@ -158,7 +163,7 @@ function messaggio(t) { $('#messaggio').textContent = t || ''; }
  * quali carte stanno sparendo dal tavolo: e' li' che si allena la memoria.
  */
 
-const TEMPI = { volo: 0.42, presa: 0.58, uscita: 0.34, respiro: 0.18, scopa: 0.5 };
+const TEMPI = { volo: 0.42, presa: 0.85, uscita: 0.38, respiro: 0.34, scopa: 0.75 };
 
 const durata = f => Math.max(90, Math.round(APP.opz.ritardo * f));
 
@@ -232,15 +237,17 @@ async function volaAlTavolo(g, c) {
   return posato;
 }
 
-/* le carte prese se ne vanno verso chi le ha prese */
+/* le carte prese volano dentro il mazzetto della squadra che le ha prese:
+   devono avere una destinazione visibile, altrimenti sembra che spariscano */
 async function portaVia(elementi, squadra) {
   const validi = elementi.filter(Boolean);
   if (!validi.length) return;
 
-  const meta = $(squadra === 0 ? '#posto0' : '#posto1').getBoundingClientRect();
+  const mazzo = $(squadra === 0 ? '#mazzoNoi' : '#mazzoLoro');
+  const b = mazzo.getBoundingClientRect();
   const verso = {
-    left: meta.left + meta.width / 2 - 18, top: meta.top + meta.height / 2 - 27,
-    width: 36, height: 54
+    left: b.left + b.width / 2 - 15, top: b.top + b.height / 2 - 22,
+    width: 30, height: 44
   };
   const ms = durata(TEMPI.uscita);
 
@@ -249,40 +256,57 @@ async function portaVia(elementi, squadra) {
     el.style.visibility = 'hidden';
     return v;
   });
-  for (const v of volanti) {
-    muovi(v, verso, ms);
-    v.style.opacity = '0';
-  }
-  await sleep(ms);
+  /* partono a raffica, non tutte insieme: si contano meglio */
+  volanti.forEach((v, i) => {
+    setTimeout(() => {
+      muovi(v, verso, ms);
+      v.style.opacity = '0.15';
+    }, i * Math.min(90, Math.round(ms / 4)));
+  });
+
+  await sleep(ms + volanti.length * 40);
   volanti.forEach(v => v.remove());
+  mazzo.classList.add('cresce');
+  setTimeout(() => mazzo.classList.remove('cresce'), 500);
 }
 
 async function eseguiMossa(m) {
   const st = APP.st;
   const g = st.turno;
   const sq = squadraDi(g);
+  const tav = $('#tavolo');
 
+  messaggio('<span class="chi">' + NOMI[g] + '</span> cala ' + elenco([m.carta]));
   const posato = await volaAlTavolo(g, m.carta);
 
   if (m.presa) {
     const presi = [];
     for (const c of m.presa) {
-      const el = [...$('#tavolo').children]
-        .find(x => +x.dataset.id === c && x !== posato);
+      const el = [...tav.children].find(x => +x.dataset.id === c && x !== posato);
       if (el) { el.classList.add('inPresa'); presi.push(el); }
     }
+    /* si spegne il resto del tavolo: restano accese solo le carte in ballo */
+    tav.classList.add('evidenzia');
+    messaggio('<span class="chi">' + NOMI[g] + '</span> con ' + elenco([m.carta]) +
+              ' prende ' + elenco(m.presa));
     await sleep(durata(TEMPI.presa));
+
+    messaggio(elenco(m.presa.concat([m.carta])) + ' &rarr; <b>' + nomeSq(sq) + '</b>');
     await portaVia(presi.concat([posato]), sq);
+    tav.classList.remove('evidenzia');
   } else {
+    messaggio('<span class="chi">' + NOMI[g] + '</span> lascia ' + elenco([m.carta]) +
+              ' sul tavolo');
     await sleep(durata(TEMPI.respiro));
   }
 
   const rec = gioca(st, m.carta, m.presa);
   render();
+
   if (rec.scopa) {
-    messaggio('Scopa di ' + NOMI[g] + '!');
+    messaggio('<span class="urlo">SCOPA</span> di <span class="chi">' + NOMI[g] +
+              '</span> — tavolo pulito, un punto a <b>' + nomeSq(sq) + '</b>');
     await sleep(durata(TEMPI.scopa));
-    messaggio('');
   }
   return rec;
 }
@@ -742,16 +766,14 @@ async function ciclo() {
         APP.checkFatto = true;
         await checkpointMemoria();
       }
-      messaggio('Tocca a te.');
+      messaggio('<span class="chi">Tocca a te</span> — scegli una carta');
       const m = await attendiMossa();
-      messaggio('');
       await eseguiMossa(m);
     } else {
       render();
-      messaggio('Gioca ' + NOMI[st.turno] + '…');
-      await sleep(durata(0.2));
+      messaggio('Pensa <span class="chi">' + NOMI[st.turno] + '</span>…');
+      await sleep(durata(0.22));
       const m = scegliMossa(st, st.turno, APP.opz.livello);
-      messaggio('');
       await eseguiMossa(m);
     }
   }
@@ -770,6 +792,8 @@ function iniziaMano() {
   APP.risolviMossa = null;
   const seed = (Math.random() * 0xffffffff) >>> 0;
   APP.st = nuovaMano(seed, APP.mazziere);
+  $('#tavolo').classList.remove('evidenzia');   /* se si abbandona a meta' presa */
+  document.querySelectorAll('.volante').forEach(v => v.remove());
   messaggio('');
   render();
   ciclo();
