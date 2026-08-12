@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Scopone Coach — verifica regole</title>
+<style>
+  body { font: 14px/1.6 ui-monospace, Menlo, monospace; background: #10251d; color: #e9f0ec;
+         padding: 24px; }
+  h1 { font-size: 16px; letter-spacing: 1px; }
+  .OK { color: #7fd6a0; }
+  .ERR { color: #e8836f; font-weight: 700; }
+  #esito { margin-top: 18px; padding-top: 12px; border-top: 1px solid #2c5445; font-size: 15px; }
+</style>
+</head>
+<body>
+<h1>Verifica delle regole e del motore</h1>
+<div id="out"></div>
+<div id="esito"></div>
+
+<script src="rules.js"></script>
+<script src="ai.js"></script>
+<script>
+const T = [];
+const ok = (nome, cond) => T.push([cond ? 'OK' : 'ERR', nome]);
+const uguali = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const nomi = ps => ps.map(p => p.map(nomeCarta).sort().join('+')).sort();
+
+/* ---- prese ---- */
+ok('somme ammesse quando non c\'e\' la singola',
+   uguali(nomi(prese(carta(7, 0), [carta(3,1), carta(4,2), carta(5,3), carta(2,0)])),
+          ['2♦+5♣', '3♥+4♠']));
+ok('il re prende una somma se non c\'e\' un re sul tavolo',
+   prese(carta(10, 0), [carta(7,1), carta(3,2)]).length === 1);
+ok('con la singola sul tavolo le somme sono vietate',
+   uguali(nomi(prese(carta(10,0), [carta(10,1), carta(7,2), carta(3,3)])), ['R♥']));
+ok('due singole dello stesso valore = due scelte',
+   prese(carta(4,0), [carta(4,1), carta(4,2)]).length === 2);
+ok('nessuna presa possibile',
+   prese(carta(9,0), [carta(10,1), carta(8,2)]).length === 0);
+ok('valoriPrendibili coerente',
+   uguali([...valoriPrendibili([carta(3,1), carta(4,2)])].sort((a,b)=>a-b), [3, 4, 7]));
+
+/* ---- primiera ---- */
+ok('primiera 7+6+A+5 di semi diversi = 70',
+   primieraDi([carta(7,0), carta(6,1), carta(1,2), carta(5,3)]).totale === 70);
+ok('primiera con semi mancanti conta solo i presenti',
+   primieraDi([carta(7,0), carta(7,1)]).totale === 42);
+ok('le figure valgono 10',
+   primieraDi([carta(8,0), carta(9,1), carta(10,2)]).totale === 30);
+
+/* ---- scopa e fine mano ---- */
+{
+  const st = nuovaMano(4242, 3);
+  st.mani = [[carta(1,0)], [carta(2,1)], [carta(3,2)], [carta(6,3)]];
+  st.tavolo = []; st.turno = 0;
+  gioca(st, carta(1,0), null);
+  gioca(st, carta(2,1), null);
+  gioca(st, carta(3,2), null);
+  gioca(st, carta(6,3), [carta(1,0), carta(2,1), carta(3,2)]);
+  ok('l\'ultima presa non vale scopa', st.scope[0] === 0 && st.scope[1] === 0);
+  ok('la mano risulta finita', st.finita === true);
+}
+{
+  const st = nuovaMano(4243, 3);
+  st.mani = [[carta(1,0), carta(5,0)], [carta(2,1), carta(8,1)],
+             [carta(3,2), carta(9,2)], [carta(6,3), carta(10,3)]];
+  st.tavolo = []; st.turno = 0;
+  gioca(st, carta(1,0), null);
+  gioca(st, carta(2,1), null);
+  gioca(st, carta(3,2), null);
+  gioca(st, carta(6,3), [carta(1,0), carta(2,1), carta(3,2)]);
+  ok('scopa valida se non e\' l\'ultima presa', st.scope[1] === 1);
+}
+{
+  const st = nuovaMano(77, 3);
+  st.mani = [[carta(1,0)], [carta(2,1)], [carta(3,2)], [carta(9,3)]];
+  st.tavolo = [carta(10,0)]; st.turno = 0;
+  gioca(st, carta(1,0), null);
+  gioca(st, carta(2,1), null);
+  gioca(st, carta(3,2), [carta(1,0), carta(2,1)]);
+  gioca(st, carta(9,3), null);
+  ok('le carte rimaste vanno a chi ha preso per ultimo',
+     st.prese[0].includes(carta(10,0)) && st.prese[0].includes(carta(9,3)) && !st.tavolo.length);
+}
+
+/* ---- punteggio ---- */
+{
+  const st = nuovaMano(5, 3);
+  st.prese[0] = [];
+  st.prese[1] = [];
+  for (let c = 0; c < 40; c++) (c < 20 ? st.prese[0] : st.prese[1]).push(c);
+  const p = punteggioMano(st);
+  ok('20-20: le carte non danno punto a nessuno',
+     !p[0].voci.includes('carte') && !p[1].voci.includes('carte'));
+  ok('somma denari = 10', p[0].denari + p[1].denari === 10);
+}
+
+/* ---- invarianti su 300 mani casuali ---- */
+{
+  let guasti = 0;
+  for (let k = 0; k < 300; k++) {
+    const st = nuovaMano(k * 7919 + 3, k % 4);
+    while (!st.finita) {
+      const m = mosseLegali(st, st.turno);
+      if (!m.length) { guasti++; break; }
+      const s = m[Math.floor(Math.random() * m.length)];
+      gioca(st, s.carta, s.presa);
+    }
+    const tutte = new Set(st.prese[0].concat(st.prese[1], st.tavolo));
+    if (tutte.size !== 40) guasti++;
+    if (st.storia.length !== 40) guasti++;
+    const p = punteggioMano(st);
+    if (p[0].carte + p[1].carte !== 40) guasti++;
+    if (p[0].denari + p[1].denari !== 10) guasti++;
+  }
+  ok('300 mani casuali senza incoerenze (40 carte, 40 mosse, 10 denari)', guasti === 0);
+}
+
+/* ---- il motore non guarda le carte altrui ---- */
+{
+  const st = nuovaMano(31337, 3);
+  const copia = st.mani.map(m => m.slice());
+  scegliMossa(st, st.turno, 'campione');
+  ok('scegliMossa non altera le mani', uguali(st.mani, copia));
+
+  /* cambiando le carte degli altri (lasciando le sue) la scelta al primo
+     giro non deve dipendere da cio' che il bot non puo' vedere */
+  const a = nuovaMano(31337, 3);
+  const b = nuovaMano(31337, 3);
+  const g = a.turno;
+  const altre = [];
+  for (const q of [0,1,2,3]) if (q !== g) altre.push(...b.mani[q]);
+  mescola(altre, rng(9));
+  let i = 0;
+  for (const q of [0,1,2,3]) if (q !== g) b.mani[q] = altre.slice(i, i += 10);
+  const m1 = scegliMossa(a, g, 'campione');
+  const m2 = scegliMossa(b, g, 'campione');
+  ok('la scelta non cambia se cambiano solo le carte non viste',
+     m1.carta === m2.carta);
+}
+
+/* ---- forza dei livelli ---- */
+function match(livA, livB, n, off) {
+  let a = 0, b = 0;
+  for (let k = 0; k < n; k++) {
+    const st = nuovaMano((k + off) * 7919 + 13, k % 4);
+    while (!st.finita) {
+      const m = scegliMossa(st, st.turno, (st.turno & 1) === 0 ? livA : livB);
+      gioca(st, m.carta, m.presa);
+    }
+    const p = punteggioMano(st);
+    a += p[0].punti; b += p[1].punti;
+  }
+  return [a, b];
+}
+{
+  const [c, i] = match('campione', 'intermedio', 12, 400);
+  ok('campione batte intermedio (' + c + '-' + i + ')', c > i);
+  const [i2, p] = match('intermedio', 'principiante', 12, 400);
+  ok('intermedio batte principiante (' + i2 + '-' + p + ')', i2 > p);
+}
+
+/* ---- stampa ---- */
+const out = document.getElementById('out');
+out.innerHTML = T.map(([e, n]) => '<div class="' + e + '">' + e + '  ' + n + '</div>').join('');
+const err = T.filter(t => t[0] === 'ERR').length;
+document.getElementById('esito').innerHTML = err
+  ? '<span class="ERR">' + err + ' verifiche fallite su ' + T.length + '</span>'
+  : '<span class="OK">tutte le ' + T.length + ' verifiche superate</span>';
+</script>
+</body>
+</html>

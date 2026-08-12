@@ -1,0 +1,15 @@
+{
+  "name": "Scopone Coach",
+  "short_name": "Scopone",
+  "description": "Allenamento a scopone scientifico contro tre avversari virtuali.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#133c2c",
+  "theme_color": "#0b1a14",
+  "icons": [
+    { "src": "icona.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

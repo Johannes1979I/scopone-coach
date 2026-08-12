@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Scopone Coach</title>
+<meta name="description" content="Allenamento a scopone scientifico contro tre avversari virtuali, per imparare a ricordare le carte.">
+<meta name="theme-color" content="#0b1a14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scopone">
+<link rel="icon" href="icona.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icona.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="testa">
+  <h1>Scopone <span>Coach</span></h1>
+  <div id="tabellone">
+    <div class="sq sq0"><span class="et">Noi</span><span class="pt" id="pt0">0</span></div>
+    <div class="sep">–</div>
+    <div class="sq sq1"><span class="et">Loro</span><span class="pt" id="pt1">0</span></div>
+  </div>
+  <div id="statoMano">Mano 1</div>
+</header>
+
+<main>
+  <section id="tavoloWrap">
+    <div class="posto posto-nord" id="posto2">
+      <div class="etichetta">Nord <em>compagno</em></div>
+      <div class="dorsi" id="dorsi2"></div>
+    </div>
+
+    <div class="posto posto-ovest" id="posto3">
+      <div class="etichetta">Ovest</div>
+      <div class="dorsi" id="dorsi3"></div>
+    </div>
+
+    <div class="posto posto-est" id="posto1">
+      <div class="etichetta">Est</div>
+      <div class="dorsi" id="dorsi1"></div>
+    </div>
+
+    <div id="centro">
+      <div id="ultime"></div>
+      <div id="tavolo"></div>
+      <div id="messaggio"></div>
+    </div>
+
+    <div class="posto posto-sud" id="posto0">
+      <div class="etichetta">Sud <em>tu</em></div>
+      <div id="mia"></div>
+    </div>
+  </section>
+
+  <aside id="lato">
+    <div class="pannello">
+      <h2>Partita</h2>
+      <dl id="info">
+        <dt>Mano</dt><dd id="iMano">1</dd>
+        <dt>Mazziere</dt><dd id="iMazziere">Ovest</dd>
+        <dt>Carte in tavola</dt><dd id="iTavolo">0</dd>
+        <dt>Di turno</dt><dd id="iTurno">Sud</dd>
+      </dl>
+    </div>
+
+    <div class="pannello">
+      <h2>Preso finora</h2>
+      <dl id="bottino">
+        <dt>Carte noi / loro</dt><dd id="bCarte">0 / 0</dd>
+        <dt>Scope noi / loro</dt><dd id="bScope">0 / 0</dd>
+      </dl>
+      <p class="nota">Denari, settebello e primiera restano nascosti: tocca a te tenerne il conto.</p>
+    </div>
+
+    <div class="pannello">
+      <h2>Comandi</h2>
+      <button id="btnSbircia" class="secondario">Sbircia le carte uscite</button>
+      <p class="nota" id="notaSbircia">Aiuto registrato nel log: usalo il meno possibile.</p>
+      <button id="btnNuovaMano" class="secondario">Abbandona la mano</button>
+      <button id="btnNuovaPartita" class="secondario">Nuova partita</button>
+    </div>
+
+    <div class="pannello">
+      <h2>Impostazioni</h2>
+      <label>Avversari
+        <select id="optLivello">
+          <option value="principiante">Principiante</option>
+          <option value="intermedio">Intermedio</option>
+          <option value="campione" selected>Campione</option>
+        </select>
+      </label>
+      <label>Ritmo
+        <select id="optRitardo">
+          <option value="450">Veloce</option>
+          <option value="900" selected>Normale</option>
+          <option value="1600">Lento</option>
+        </select>
+      </label>
+      <label>Partita a
+        <select id="optObiettivo">
+          <option value="11" selected>11 punti</option>
+          <option value="16">16 punti</option>
+          <option value="21">21 punti</option>
+        </select>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="optCheckpoint" checked>
+        Controllo memoria a 3 carte
+      </label>
+    </div>
+
+    <div class="pannello">
+      <h2>Memoria</h2>
+      <dl id="statMem">
+        <dt>Risposte esatte</dt><dd id="mAcc">—</dd>
+        <dt>Domande fatte</dt><dd id="mTot">0</dd>
+      </dl>
+    </div>
+
+    <div class="pannello" id="panArchivio">
+      <h2>Archivio mani</h2>
+      <dl><dt>Mani salvate</dt><dd id="aCount">0</dd></dl>
+      <button id="btnCopiaArchivio" class="secondario">Copia tutto per l'analisi</button>
+      <button id="btnScaricaArchivio" class="secondario">Scarica l'archivio</button>
+      <button id="btnSvuotaArchivio" class="secondario">Svuota</button>
+      <p class="nota">Le mani restano nel browser di questo dispositivo.</p>
+    </div>
+  </aside>
+</main>
+
+<div id="velo" class="nascosto"></div>
+<div id="finestra" class="nascosto"></div>
+
+<script src="rules.js"></script>
+<script src="carte.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

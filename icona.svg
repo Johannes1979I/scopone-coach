@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#133c2c"/>
+  <g transform="rotate(-14 256 288)">
+    <rect x="112" y="150" width="180" height="264" rx="18" fill="#fdfbf5" stroke="#c9c2ad" stroke-width="4"/>
+    <text x="202" y="252" font-family="Helvetica,Arial,sans-serif" font-size="86" font-weight="700"
+          text-anchor="middle" fill="#2b6ba8">7</text>
+    <text x="202" y="352" font-family="Helvetica,Arial,sans-serif" font-size="92"
+          text-anchor="middle" fill="#2b6ba8">♠</text>
+  </g>
+  <g transform="rotate(12 256 288)">
+    <rect x="228" y="128" width="180" height="264" rx="18" fill="#fdfbf5" stroke="#c9c2ad" stroke-width="4"/>
+    <text x="318" y="230" font-family="Helvetica,Arial,sans-serif" font-size="86" font-weight="700"
+          text-anchor="middle" fill="#c08a1e">7</text>
+    <text x="318" y="330" font-family="Helvetica,Arial,sans-serif" font-size="92"
+          text-anchor="middle" fill="#c08a1e">♦</text>
+  </g>
+</svg>
