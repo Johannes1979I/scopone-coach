@@ -109,6 +109,20 @@ main {
 .etichetta em { font-style: normal; opacity: .6; text-transform: none; letter-spacing: 0; }
 .posto.attivo .etichetta { color: var(--oro); }
 
+.etichetta { display: flex; align-items: center; gap: 6px; justify-content: center; }
+.cartaro {
+  display: none;
+  font-size: 9.5px;
+  letter-spacing: .8px;
+  padding: 2px 6px 1px;
+  border-radius: 999px;
+  background: var(--oro);
+  color: #10251d;
+  font-weight: 700;
+}
+.posto.mazziere .cartaro { display: inline-block; }
+.posto-ovest .etichetta, .posto-est .etichetta { flex-direction: column; gap: 3px; }
+
 .dorsi { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
 .posto-ovest .dorsi, .posto-est .dorsi { flex-direction: column; gap: 2px; }
 
@@ -207,6 +221,41 @@ main {
 
 #mia.inattiva .carta { cursor: default; }
 #mia.inattiva .carta:hover { transform: none; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+
+/* ---------- animazione della giocata ---------- */
+
+.volante {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--carta-bg);
+  box-shadow: 0 14px 30px rgba(0,0,0,.55);
+  transition-property: left, top, width, height, transform, opacity;
+  transition-timing-function: cubic-bezier(.25,.85,.35,1);
+  transition-duration: 0ms;
+}
+.volante svg { display: block; width: 100%; height: 100%; }
+.volante.coperta {
+  background: repeating-linear-gradient(45deg, #7a2323 0 4px, #94322d 4px 8px);
+  border: 1px solid #4d1616;
+}
+
+/* la carta appena calata: anello bianco */
+.carta.cartaGiocata {
+  box-shadow: 0 0 0 3px #fff, 0 0 20px 5px rgba(255,255,255,.45), 0 8px 18px rgba(0,0,0,.5);
+  transform: translateY(-7px);
+  transition: transform .25s, box-shadow .25s;
+  z-index: 2;
+}
+/* le carte che sta portando via: anello dorato */
+.carta.inPresa {
+  box-shadow: 0 0 0 3px var(--oro), 0 0 20px 5px rgba(216,180,90,.4), 0 8px 18px rgba(0,0,0,.5);
+  transform: translateY(-7px);
+  transition: transform .25s, box-shadow .25s;
+  z-index: 2;
+}
 
 /* ---------- pannello laterale ---------- */
 

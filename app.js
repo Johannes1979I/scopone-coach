@@ -11,7 +11,7 @@ const APP = {
   punti: [0, 0],
   mano: 0,
   mazziere: 3,
-  opz: { livello: 'campione', ritardo: 900, sistema: 'quarantuno', obiettivo: 41,
+  opz: { livello: 'campione', ritardo: 1100, sistema: 'quarantuno', obiettivo: 41,
          checkpoint: true },
   sbirciate: 0,
   memoria: [],
@@ -121,9 +121,11 @@ function render() {
     ult.appendChild(g);
   }
 
-  /* posti attivi */
+  /* posti: chi e' di turno e chi ha dato le carte */
   for (const g of [0, 1, 2, 3]) {
-    $('#posto' + g).classList.toggle('attivo', st.turno === g && !st.finita);
+    const p = $('#posto' + g);
+    p.classList.toggle('attivo', st.turno === g && !st.finita);
+    p.classList.toggle('mazziere', st.mazziere === g);
   }
 
   /* pannello */
@@ -147,6 +149,143 @@ function render() {
 }
 
 function messaggio(t) { $('#messaggio').textContent = t || ''; }
+
+/* ---------- animazione della giocata ----------
+ * Ogni mossa si legge in tre tempi: la carta arriva sul tavolo (girandosi
+ * a mezz'aria se non e' la tua), resta un attimo in evidenza insieme a
+ * quelle che prende, e solo dopo se ne vanno tutte insieme dalla parte di
+ * chi ha preso. Il tempo di mezzo e' quello che serve per accorgersi di
+ * quali carte stanno sparendo dal tavolo: e' li' che si allena la memoria.
+ */
+
+const TEMPI = { volo: 0.42, presa: 0.58, uscita: 0.34, respiro: 0.18, scopa: 0.5 };
+
+const durata = f => Math.max(90, Math.round(APP.opz.ritardo * f));
+
+function volante(html, r, classe) {
+  const d = document.createElement('div');
+  d.className = 'volante' + (classe ? ' ' + classe : '');
+  d.style.left = r.left + 'px';
+  d.style.top = r.top + 'px';
+  d.style.width = r.width + 'px';
+  d.style.height = r.height + 'px';
+  if (html) d.innerHTML = html;
+  document.body.appendChild(d);
+  return d;
+}
+
+function muovi(v, r, ms) {
+  v.style.transitionDuration = ms + 'ms';
+  void v.offsetWidth;                 /* fissa lo stato di partenza */
+  v.style.left = r.left + 'px';
+  v.style.top = r.top + 'px';
+  v.style.width = r.width + 'px';
+  v.style.height = r.height + 'px';
+}
+
+/* la carta vola dal posto di chi gioca fino al tavolo; ritorna
+   l'elemento rimasto sul tavolo, gia' evidenziato */
+async function volaAlTavolo(g, c) {
+  const tav = $('#tavolo');
+  const posato = elCarta(c);
+  posato.style.visibility = 'hidden';
+  tav.appendChild(posato);
+  const arrivo = posato.getBoundingClientRect();
+
+  const coperta = g !== 0;
+  let partenza = null;
+  if (coperta) {
+    const ultimo = $('#dorsi' + g).lastElementChild;
+    if (ultimo) { partenza = ultimo.getBoundingClientRect(); ultimo.style.visibility = 'hidden'; }
+  } else {
+    const el = [...$('#mia').children].find(x => +x.dataset.id === c);
+    if (el) { partenza = el.getBoundingClientRect(); el.style.visibility = 'hidden'; }
+  }
+
+  posato.classList.add('cartaGiocata');
+  if (!partenza || !arrivo.width) { posato.style.visibility = ''; return posato; }
+
+  const ms = durata(TEMPI.volo);
+  const meta = Math.round(ms / 2);
+  const v = volante(coperta ? '' : svgCarta(c), partenza, coperta ? 'coperta' : '');
+
+  if (coperta) {
+    /* a meta' strada la carta si gira: e' il momento in cui la vedi */
+    muovi(v, {
+      left: (partenza.left + arrivo.left) / 2, top: (partenza.top + arrivo.top) / 2,
+      width: (partenza.width + arrivo.width) / 2, height: (partenza.height + arrivo.height) / 2
+    }, meta);
+    v.style.transform = 'scaleX(0.05)';
+    await sleep(meta);
+    v.classList.remove('coperta');
+    v.innerHTML = svgCarta(c);
+    muovi(v, arrivo, meta);
+    v.style.transform = 'scaleX(1)';
+    await sleep(meta);
+  } else {
+    muovi(v, arrivo, ms);
+    await sleep(ms);
+  }
+
+  posato.style.visibility = '';
+  v.remove();
+  return posato;
+}
+
+/* le carte prese se ne vanno verso chi le ha prese */
+async function portaVia(elementi, squadra) {
+  const validi = elementi.filter(Boolean);
+  if (!validi.length) return;
+
+  const meta = $(squadra === 0 ? '#posto0' : '#posto1').getBoundingClientRect();
+  const verso = {
+    left: meta.left + meta.width / 2 - 18, top: meta.top + meta.height / 2 - 27,
+    width: 36, height: 54
+  };
+  const ms = durata(TEMPI.uscita);
+
+  const volanti = validi.map(el => {
+    const v = volante(el.innerHTML, el.getBoundingClientRect());
+    el.style.visibility = 'hidden';
+    return v;
+  });
+  for (const v of volanti) {
+    muovi(v, verso, ms);
+    v.style.opacity = '0';
+  }
+  await sleep(ms);
+  volanti.forEach(v => v.remove());
+}
+
+async function eseguiMossa(m) {
+  const st = APP.st;
+  const g = st.turno;
+  const sq = squadraDi(g);
+
+  const posato = await volaAlTavolo(g, m.carta);
+
+  if (m.presa) {
+    const presi = [];
+    for (const c of m.presa) {
+      const el = [...$('#tavolo').children]
+        .find(x => +x.dataset.id === c && x !== posato);
+      if (el) { el.classList.add('inPresa'); presi.push(el); }
+    }
+    await sleep(durata(TEMPI.presa));
+    await portaVia(presi.concat([posato]), sq);
+  } else {
+    await sleep(durata(TEMPI.respiro));
+  }
+
+  const rec = gioca(st, m.carta, m.presa);
+  render();
+  if (rec.scopa) {
+    messaggio('Scopa di ' + NOMI[g] + '!');
+    await sleep(durata(TEMPI.scopa));
+    messaggio('');
+  }
+  return rec;
+}
 
 /* ---------- finestre ---------- */
 
@@ -606,15 +745,14 @@ async function ciclo() {
       messaggio('Tocca a te.');
       const m = await attendiMossa();
       messaggio('');
-      gioca(st, m.carta, m.presa);
-      render();
+      await eseguiMossa(m);
     } else {
       render();
-      await sleep(Math.round(APP.opz.ritardo * 0.35));
+      messaggio('Gioca ' + NOMI[st.turno] + '…');
+      await sleep(durata(0.2));
       const m = scegliMossa(st, st.turno, APP.opz.livello);
-      gioca(st, m.carta, m.presa);
-      render();
-      await sleep(Math.round(APP.opz.ritardo * 0.65));
+      messaggio('');
+      await eseguiMossa(m);
     }
   }
   render();
